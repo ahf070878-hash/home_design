@@ -6,7 +6,7 @@ export function proxy(request: NextRequest) {
 
   if (process.env.APP_SURFACE === "admin") {
     if (path === "/") return NextResponse.redirect(new URL("/admin", request.url));
-    if (path.startsWith("/uploads/media/")) return NextResponse.next();
+    if (path.startsWith("/uploads/media/") || path.startsWith("/api/media/")) return NextResponse.next();
     return isAdminRoute ? NextResponse.next() : new NextResponse("Not Found", { status: 404 });
   }
 

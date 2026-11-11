@@ -7,7 +7,7 @@ if (!new Set(["public", "admin"]).has(surface)) throw new Error(`Permukaan aplik
 
 const nextCli = resolve("node_modules", "next", "dist", "bin", "next");
 const args = [nextCli, command];
-if (command !== "build") args.push("--port", port);
+if (command !== "build") args.push("--port", process.env.PORT || port);
 
 const child = spawn(process.execPath, args, {
   stdio: "inherit",

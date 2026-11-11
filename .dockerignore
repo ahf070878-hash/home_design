@@ -1,0 +1,12 @@
+.git
+.next
+.next-admin
+node_modules
+generated
+.env*
+.diagnostics
+.hallmark
+Video-Image
+public/uploads/media/*
+!public/uploads/media/.gitkeep
+npm-debug.log*

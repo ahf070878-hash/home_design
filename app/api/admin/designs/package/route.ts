@@ -1,13 +1,11 @@
 import { randomUUID, timingSafeEqual } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { extname, join } from "node:path";
+import { extname } from "node:path";
 import { NextResponse } from "next/server";
+import { deleteMediaAsset, writeMediaAsset } from "@/lib/media-storage";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-const MEDIA_DIRECTORY = join(process.cwd(), "public", "uploads", "media");
-const MEDIA_METADATA_FILE = join(MEDIA_DIRECTORY, ".media-library.json");
 const MIN_PACKAGE_SIZE = 1;
 const MAX_PACKAGE_SIZE = 20;
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
@@ -17,8 +15,6 @@ const ALLOWED_TYPES = new Map([
   ["image/webp", ".webp"],
   ["image/avif", ".avif"],
 ]);
-
-type MediaMetadata = Record<string, { displayName: string }>;
 
 function isAuthorized(request: Request) {
   const expected = process.env.SETTINGS_ADMIN_TOKEN;
@@ -32,15 +28,6 @@ function isAuthorized(request: Request) {
 
 function safeStem(value: string) {
   return value.normalize("NFKD").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase().slice(0, 48) || "paket";
-}
-
-async function readMetadata(): Promise<MediaMetadata> {
-  try {
-    const value: unknown = JSON.parse(await readFile(MEDIA_METADATA_FILE, "utf8"));
-    return value && typeof value === "object" && !Array.isArray(value) ? value as MediaMetadata : {};
-  } catch {
-    return {};
-  }
 }
 
 export async function POST(request: Request) {
@@ -62,8 +49,6 @@ export async function POST(request: Request) {
   const design = await prisma.design.findUnique({ where: { id: designId }, select: { id: true, code: true } });
   if (!design) return NextResponse.json({ error: "Desain tidak ditemukan." }, { status: 404 });
 
-  await mkdir(MEDIA_DIRECTORY, { recursive: true });
-  const metadata = await readMetadata();
   const writtenFiles: string[] = [];
   const galleryImageUrls: string[] = [];
 
@@ -71,11 +56,9 @@ export async function POST(request: Request) {
     for (const [index, file] of files.entries()) {
       const extension = ALLOWED_TYPES.get(file.type) ?? extname(file.name).toLowerCase();
       const fileName = `${Date.now()}-${randomUUID().slice(0, 8)}-${safeStem(design.code)}-${safeStem(packageName)}-${index + 1}${extension}`;
-      const filePath = join(MEDIA_DIRECTORY, fileName);
-      await writeFile(filePath, Buffer.from(await file.arrayBuffer()), { flag: "wx" });
-      writtenFiles.push(filePath);
-      galleryImageUrls.push(`/uploads/media/${encodeURIComponent(fileName)}`);
-      metadata[fileName] = { displayName: `${packageName} · ${index + 1}/${files.length}` };
+      const url = await writeMediaAsset(fileName, Buffer.from(await file.arrayBuffer()), file.type, `${packageName} · ${index + 1}/${files.length}`);
+      writtenFiles.push(fileName);
+      galleryImageUrls.push(url);
     }
 
     const updated = await prisma.design.update({
@@ -83,11 +66,10 @@ export async function POST(request: Request) {
       data: { mediaPackageName: packageName, galleryImageUrls, mainImageUrl: galleryImageUrls[0] },
       select: { id: true, code: true, name: true, type: true, style: true, mainImageUrl: true, mediaPackageName: true, galleryImageUrls: true, isActive: true },
     });
-    await writeFile(MEDIA_METADATA_FILE, `${JSON.stringify(metadata, null, 2)}\n`, "utf8").catch(() => undefined);
     return NextResponse.json({ design: updated, uploadedImages: galleryImageUrls.length }, { status: 201 });
   } catch (error) {
     console.error("Gagal menyimpan paket gambar desain:", error);
-    await Promise.all(writtenFiles.map((filePath) => unlink(filePath).catch(() => undefined)));
+    await Promise.all(writtenFiles.map((fileName) => deleteMediaAsset(fileName).catch(() => undefined)));
     return NextResponse.json({ error: "Paket gambar gagal disimpan." }, { status: 500 });
   }
 }

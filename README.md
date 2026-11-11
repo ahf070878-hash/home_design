@@ -93,3 +93,12 @@ tokens.css              token warna, tipografi, spacing, motion
 ```
 
 Semua data pembayaran, OTP, kontraktor, redemption, dan analitik pada repo ini adalah data demonstrasi.
+
+## Google Cloud Run
+
+Deployment produksi memakai dua service dari repository yang sama:
+
+- `Dockerfile.customer` untuk service customer publik.
+- `Dockerfile.admin` untuk service admin dengan autentikasi Cloud Run.
+
+Kedua container mendengarkan `PORT` dari Cloud Run. Atur `DATABASE_URL` dan `SETTINGS_ADMIN_TOKEN` melalui Secret Manager, serta `GCS_MEDIA_BUCKET` ke bucket Cloud Storage yang dapat diakses service account Cloud Run. Tanpa `GCS_MEDIA_BUCKET`, Pustaka Aset memakai penyimpanan lokal hanya untuk pengembangan.

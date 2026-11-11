@@ -1,12 +1,11 @@
 import { timingSafeEqual } from "node:crypto";
-import { stat } from "node:fs/promises";
-import { basename, extname, join } from "node:path";
+import { basename, extname } from "node:path";
 import { NextResponse } from "next/server";
+import { mediaAssetExists } from "@/lib/media-storage";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-const MEDIA_DIRECTORY = join(process.cwd(), "public", "uploads", "media");
 const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif", ".gif"]);
 
 function isAuthorized(request: Request) {
@@ -20,9 +19,11 @@ function isAuthorized(request: Request) {
 }
 
 function mediaFileName(value: unknown) {
-  if (typeof value !== "string" || !value.startsWith("/uploads/media/")) return null;
+  if (typeof value !== "string") return null;
+  const prefix = value.startsWith("/api/media/") ? "/api/media/" : value.startsWith("/uploads/media/") ? "/uploads/media/" : null;
+  if (!prefix) return null;
   try {
-    const fileName = decodeURIComponent(value.slice("/uploads/media/".length));
+    const fileName = decodeURIComponent(value.slice(prefix.length));
     if (!fileName || fileName.startsWith(".") || basename(fileName) !== fileName || !IMAGE_EXTENSIONS.has(extname(fileName).toLowerCase())) return null;
     return fileName;
   } catch {
@@ -46,8 +47,7 @@ export async function PATCH(request: Request) {
   if (!fileName) return NextResponse.json({ error: "Pilih gambar dari Pustaka Aset." }, { status: 400 });
 
   try {
-    const details = await stat(join(MEDIA_DIRECTORY, fileName));
-    if (!details.isFile()) throw new Error("NOT_A_FILE");
+    if (!await mediaAssetExists(fileName)) throw new Error("NOT_A_FILE");
     const design = await prisma.design.update({
       where: { id: body.id },
       data: { mainImageUrl: body.mainImageUrl as string },
