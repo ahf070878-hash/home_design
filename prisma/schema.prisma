@@ -1,0 +1,252 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../generated/prisma"
+  runtime             = "nodejs"
+  moduleFormat        = "esm"
+  importFileExtension = "ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OtpStatus {
+  PENDING
+  VERIFIED
+  LOCKED
+}
+
+enum LandRequestStatus {
+  MATCHED
+  UNFULFILLED
+  CUSTOM_REQUESTED
+}
+
+enum OrderStatus {
+  DRAFT
+  PENDING_PAYMENT
+  PAID
+  EXPIRED
+  CANCELLED
+  ISSUED
+}
+
+enum ApplicationVisualKind {
+  RENDER
+  DIAGRAM
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model User {
+  id                 String             @id @default(uuid()) @db.Uuid
+  fullName           String             @map("full_name")
+  phone              String             @unique
+  buildLocation      String             @map("build_location")
+  otpStatus          OtpStatus          @default(PENDING) @map("otp_status")
+  otpVerifiedAt      DateTime?          @map("otp_verified_at")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  lands              CustomerLand[]
+  unmatchedDemands   UnmatchedCityDemand[]
+  orders             DesignOrder[]
+  notifications      UserNotification[]
+
+  @@map("users")
+}
+
+model CustomerLand {
+  id                 String             @id @default(uuid()) @db.Uuid
+  userId             String?            @map("user_id") @db.Uuid
+  guestSessionId     String?            @map("guest_session_id")
+  widthM             Decimal            @map("width_m") @db.Decimal(6, 2)
+  lengthM            Decimal            @map("length_m") @db.Decimal(6, 2)
+  city               String
+  district           String?
+  status             LandRequestStatus  @default(MATCHED)
+  requestNote        String?            @map("request_note")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  user               User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  orders             DesignOrder[]
+
+  @@index([city, status])
+  @@index([userId])
+  @@map("customer_lands")
+}
+
+model Design {
+  id                 String        @id
+  code               String        @unique
+  name               String
+  type                Int
+  style               String
+  minLandWidthM       Decimal       @map("min_land_width_m") @db.Decimal(6, 2)
+  minLandLengthM      Decimal       @map("min_land_length_m") @db.Decimal(6, 2)
+  floors              Int
+  bedrooms            Int
+  bathrooms           Int
+  blueprintPrice      Decimal       @map("blueprint_price") @db.Decimal(14, 2)
+  baseRab             Decimal       @map("base_rab") @db.Decimal(16, 2)
+  mainImageUrl        String        @map("main_image_url")
+  mediaPackageName    String?       @map("media_package_name")
+  galleryImageUrls    String[]      @default([]) @map("gallery_image_urls")
+  facadeVariants      Json          @map("facade_variants") @db.JsonB
+  layoutVariants      Json          @map("layout_variants") @db.JsonB
+  isActive            Boolean       @default(true) @map("is_active")
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+  orders              DesignOrder[]
+
+  @@index([type, isActive])
+  @@map("designs")
+}
+
+model MaterialsCatalog {
+  id                   String                @id
+  category             String
+  brand                String
+  productName          String                @map("product_name")
+  unit                 String
+  unitPrice            Decimal               @map("unit_price") @db.Decimal(14, 2)
+  discountPercent      Decimal               @map("discount_percent") @db.Decimal(5, 2)
+  packageImageUrl      String                @map("package_image_url")
+  applicationImageUrl  String                @map("application_image_url")
+  applicationKind      ApplicationVisualKind @map("application_kind")
+  availableCities      String[]              @map("available_cities")
+  isActive             Boolean               @default(true) @map("is_active")
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+
+  @@unique([brand, productName])
+  @@index([category, isActive])
+  @@map("materials_catalog")
+}
+
+model UnmatchedCityDemand {
+  id                 String       @id @default(uuid()) @db.Uuid
+  userId             String?      @map("user_id") @db.Uuid
+  guestSessionId     String?      @map("guest_session_id")
+  city               String
+  category           String
+  requestedBrand     String?      @map("requested_brand")
+  designId           String?      @map("design_id")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  user               User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([city, category, createdAt])
+  @@map("unmatched_city_demands")
+}
+
+model DesignOrder {
+  id                         String       @id @default(uuid()) @db.Uuid
+  userId                     String       @map("user_id") @db.Uuid
+  customerLandId             String       @map("customer_land_id") @db.Uuid
+  designId                   String       @map("design_id")
+  selectedFacade             String       @map("selected_facade")
+  selectedLayout             String       @map("selected_layout")
+  bomJson                    Json         @map("bom_json") @db.JsonB
+  estimatedRab               Decimal      @map("estimated_rab") @db.Decimal(16, 2)
+  materialDiscountEstimate   Decimal      @map("material_discount_estimate") @db.Decimal(14, 2)
+  customAdaptation           Boolean      @default(false) @map("custom_adaptation")
+  customAdaptationFee        Decimal      @default(0) @map("custom_adaptation_fee") @db.Decimal(14, 2)
+  blueprintPrice             Decimal      @map("blueprint_price") @db.Decimal(14, 2)
+  totalPaid                  Decimal      @default(0) @map("total_paid") @db.Decimal(14, 2)
+  status                     OrderStatus  @default(DRAFT)
+  paymentReference           String?      @unique @map("payment_reference")
+  paidAt                     DateTime?     @map("paid_at")
+  createdAt                  DateTime      @default(now()) @map("created_at")
+  updatedAt                  DateTime      @updatedAt @map("updated_at")
+  user                       User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  customerLand               CustomerLand  @relation(fields: [customerLandId], references: [id], onDelete: Restrict)
+  design                     Design        @relation(fields: [designId], references: [id], onDelete: Restrict)
+  voucher                    QrVoucher?
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("design_orders")
+}
+
+model QrVoucher {
+  id                 String          @id @default(uuid()) @db.Uuid
+  designOrderId      String          @unique @map("design_order_id") @db.Uuid
+  token              String          @unique
+  bomJson            Json            @map("bom_json") @db.JsonB
+  expiresAt          DateTime        @map("expires_at")
+  isRedeemed         Boolean         @default(false) @map("is_redeemed")
+  redeemedAt         DateTime?       @map("redeemed_at")
+  reissuedCount      Int             @default(0) @map("reissued_count")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  designOrder        DesignOrder     @relation(fields: [designOrderId], references: [id], onDelete: Restrict)
+  redemptionLog      RedemptionLog?
+
+  @@index([token, isRedeemed, expiresAt])
+  @@map("qr_vouchers")
+}
+
+model PartnerStore {
+  id                    String          @id @default(uuid()) @db.Uuid
+  storeCode             String          @unique @map("store_code")
+  name                  String
+  city                  String
+  address               String
+  supportedBrands       String[]        @map("supported_brands")
+  isActive              Boolean         @default(true) @map("is_active")
+  redemptionCount       Int             @default(0) @map("redemption_count")
+  redemptionSalesValue  Decimal         @default(0) @map("redemption_sales_value") @db.Decimal(18, 2)
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+  redemptionLogs        RedemptionLog[]
+
+  @@index([city, isActive])
+  @@map("partner_stores")
+}
+
+model RedemptionLog {
+  id                 String       @id @default(uuid()) @db.Uuid
+  qrVoucherId        String       @unique @map("qr_voucher_id") @db.Uuid
+  partnerStoreId     String       @map("partner_store_id") @db.Uuid
+  cashierReference   String       @map("cashier_reference")
+  purchasedBrand     String       @map("purchased_brand")
+  salesValue         Decimal      @map("sales_value") @db.Decimal(18, 2)
+  discountAmount     Decimal      @map("discount_amount") @db.Decimal(14, 2)
+  bomSnapshot        Json         @map("bom_snapshot") @db.JsonB
+  redeemedAt         DateTime     @default(now()) @map("redeemed_at")
+  voucher            QrVoucher    @relation(fields: [qrVoucherId], references: [id], onDelete: Restrict)
+  partnerStore       PartnerStore @relation(fields: [partnerStoreId], references: [id], onDelete: Restrict)
+
+  @@index([partnerStoreId, redeemedAt])
+  @@index([purchasedBrand, redeemedAt])
+  @@map("redemption_logs")
+}
+
+model UserNotification {
+  id                 String              @id @default(uuid()) @db.Uuid
+  userId             String              @map("user_id") @db.Uuid
+  type               String
+  payload            Json                @db.JsonB
+  status             NotificationStatus  @default(PENDING)
+  attempts           Int                 @default(0)
+  sentAt             DateTime?           @map("sent_at")
+  lastError          String?              @map("last_error")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("user_notifications")
+}
+
+model SiteSetting {
+  key       String   @id
+  value     Json     @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
+}

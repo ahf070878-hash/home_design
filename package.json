@@ -1,0 +1,47 @@
+{
+  "name": "hunibangun-tiket-bangun",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/run-next.mjs dev 3015 public",
+    "dev:admin": "node scripts/run-next.mjs dev 3016 admin",
+    "build": "prisma generate && node scripts/run-next.mjs build 3015 public",
+    "build:admin": "prisma generate && node scripts/run-next.mjs build 3016 admin",
+    "start": "node scripts/run-next.mjs start 3015 public",
+    "start:admin": "node scripts/run-next.mjs start 3016 admin",
+    "typecheck": "tsc --noEmit",
+    "prisma:validate": "prisma validate",
+    "prisma:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "^9.4.0",
+    "@tailwindcss/postcss": "^4.1.14",
+    "@types/three": "^0.180.0",
+    "dotenv": "^18.0.9",
+    "lucide-react": "^0.546.0",
+    "next": "^16.0.1",
+    "pg": "^8.23.1",
+    "qrcode.react": "^4.2.0",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "three": "^0.180.0",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "prisma": "^7.10.1",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}

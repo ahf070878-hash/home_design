@@ -1,0 +1,8 @@
+{
+  "name": "Remix HuniBangun.id — Marketplace Blueprint Arsitektur Siap Bangun",
+  "description": "Platform kurasi gambar kerja lengkap (DED) arsitek profesional, standar SNI, verifikasi izin SIMBG PBG, dan RAB terbuka format AutoCAD \u0026 Excel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
