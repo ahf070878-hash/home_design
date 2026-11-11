@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { ApplicationVisualKind, LandRequestStatus, OrderStatus, OtpStatus, Prisma, PrismaClient } from "../generated/prisma/client.ts";
+import { AdminRole, ApplicationVisualKind, LandRequestStatus, OrderStatus, OtpStatus, Prisma, PrismaClient } from "../generated/prisma/client.ts";
+import { hashAdminPassword } from "../lib/admin-auth.ts";
 import { designs, materials } from "../lib/mock-data.ts";
 
 const connectionString = process.env.DATABASE_URL;
@@ -18,6 +19,13 @@ const ids = {
 };
 
 async function main() {
+  const demoAdminEmail = (process.env.DEMO_ADMIN_EMAIL || "demo.admin@hunibangun.id").trim().toLowerCase();
+  const demoAdminPassword = process.env.DEMO_ADMIN_PASSWORD || "DemoHuniBangun#2026";
+  await prisma.adminUser.upsert({
+    where: { email: demoAdminEmail },
+    update: { displayName: "Admin Demo HuniBangun", passwordHash: hashAdminPassword(demoAdminPassword), role: AdminRole.ADMIN, isActive: true },
+    create: { email: demoAdminEmail, displayName: "Admin Demo HuniBangun", passwordHash: hashAdminPassword(demoAdminPassword), role: AdminRole.ADMIN, isActive: true },
+  });
   await prisma.siteSetting.upsert({
     where: { key: "hero_media" },
     update: {},
@@ -135,7 +143,7 @@ async function main() {
     create: { id: ids.demand, userId: user.id, city: "Bandung", category: "Keramik & Saniter", requestedBrand: "TOTO", designId: design.id },
   });
 
-  console.info(`Seed selesai: ${designs.length} desain, ${materials.length} material, toko ${store.storeCode}, token TB-HB001-2026-7X9K.`);
+  console.info(`Seed selesai: akun admin demo ${demoAdminEmail}, ${designs.length} desain, ${materials.length} material, toko ${store.storeCode}, token TB-HB001-2026-7X9K.`);
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; }).finally(async () => prisma.$disconnect());

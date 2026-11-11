@@ -1,5 +1,6 @@
-import { randomUUID, timingSafeEqual } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
+import { isAdminMutationAuthorized } from "@/lib/admin-auth";
 import { deleteMediaAsset, writeMediaAsset } from "@/lib/media-storage";
 import { prisma } from "@/lib/prisma";
 
@@ -13,18 +14,8 @@ const IMAGE_TYPES = new Map([
   ["image/avif", ".avif"],
 ]);
 
-function isAuthorized(request: Request) {
-  const expected = process.env.SETTINGS_ADMIN_TOKEN;
-  if (process.env.NODE_ENV !== "production" && !expected) return true;
-  if (!expected) return false;
-  const supplied = request.headers.get("x-settings-token") ?? "";
-  const expectedBuffer = Buffer.from(expected);
-  const suppliedBuffer = Buffer.from(supplied);
-  return expectedBuffer.length === suppliedBuffer.length && timingSafeEqual(expectedBuffer, suppliedBuffer);
-}
-
 export async function POST(request: Request) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: "Token pengaturan tidak valid." }, { status: 401 });
+  if (!isAdminMutationAuthorized(request)) return NextResponse.json({ error: "Sesi atau token admin tidak valid." }, { status: 401 });
 
   const designs = await prisma.design.findMany({
     where: { mainImageUrl: { startsWith: "https://images.unsplash.com/" } },

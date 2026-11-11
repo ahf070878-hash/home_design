@@ -1,6 +1,7 @@
-import { randomUUID, timingSafeEqual } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { extname } from "node:path";
 import { NextResponse } from "next/server";
+import { isAdminMutationAuthorized } from "@/lib/admin-auth";
 import { deleteMediaAsset, isSafeMediaFileName, listMediaAssets, mediaUrl, updateMediaDisplayName, writeMediaAsset } from "@/lib/media-storage";
 import { prisma } from "@/lib/prisma";
 
@@ -14,16 +15,6 @@ const ALLOWED_TYPES: ReadonlyMap<string, { extension: string; kind: "image" | "v
   ["image/gif", { extension: ".gif", kind: "image" }], ["video/mp4", { extension: ".mp4", kind: "video" }],
   ["video/webm", { extension: ".webm", kind: "video" }], ["video/quicktime", { extension: ".mov", kind: "video" }],
 ]);
-
-function isAuthorized(request: Request) {
-  const expected = process.env.SETTINGS_ADMIN_TOKEN;
-  if (process.env.NODE_ENV !== "production" && !expected) return true;
-  if (!expected) return false;
-  const supplied = request.headers.get("x-settings-token") ?? "";
-  const expectedBuffer = Buffer.from(expected);
-  const suppliedBuffer = Buffer.from(supplied);
-  return expectedBuffer.length === suppliedBuffer.length && timingSafeEqual(expectedBuffer, suppliedBuffer);
-}
 
 function safeStem(fileName: string) {
   return fileName.replace(extname(fileName), "").normalize("NFKD").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase().slice(0, 48) || "media";
@@ -41,7 +32,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: "Token pengaturan tidak valid." }, { status: 401 });
+  if (!isAdminMutationAuthorized(request)) return NextResponse.json({ error: "Sesi atau token admin tidak valid." }, { status: 401 });
   const contentLength = Number(request.headers.get("content-length") ?? 0);
   if (contentLength > MAX_FILE_SIZE + 1024 * 1024) return NextResponse.json({ error: "Ukuran file maksimal 100 MB." }, { status: 413 });
   const formData = await request.formData().catch(() => null);
@@ -57,7 +48,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: "Token pengaturan tidak valid." }, { status: 401 });
+  if (!isAdminMutationAuthorized(request)) return NextResponse.json({ error: "Sesi atau token admin tidak valid." }, { status: 401 });
   const body = await request.json().catch(() => null) as { fileName?: unknown; displayName?: unknown } | null;
   if (!isSafeMediaFileName(body?.fileName)) return NextResponse.json({ error: "Nama file media tidak valid." }, { status: 400 });
   const displayName = normalizeDisplayName(body?.displayName);
@@ -73,7 +64,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: "Token pengaturan tidak valid." }, { status: 401 });
+  if (!isAdminMutationAuthorized(request)) return NextResponse.json({ error: "Sesi atau token admin tidak valid." }, { status: 401 });
   const body = await request.json().catch(() => null) as { fileName?: unknown } | null;
   if (!isSafeMediaFileName(body?.fileName)) return NextResponse.json({ error: "Nama file media tidak valid." }, { status: 400 });
   try {

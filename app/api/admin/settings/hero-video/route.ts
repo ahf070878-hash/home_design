@@ -1,17 +1,7 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { isAdminMutationAuthorized } from "@/lib/admin-auth";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_HERO_MEDIA, HERO_SETTING_KEY, isAllowedMediaUrl, parseHeroMedia } from "@/lib/hero-settings";
-
-function isAuthorized(request: Request) {
-  const expected = process.env.SETTINGS_ADMIN_TOKEN;
-  if (process.env.NODE_ENV !== "production" && !expected) return true;
-  if (!expected) return false;
-  const supplied = request.headers.get("x-settings-token") ?? "";
-  const expectedBuffer = Buffer.from(expected);
-  const suppliedBuffer = Buffer.from(supplied);
-  return expectedBuffer.length === suppliedBuffer.length && timingSafeEqual(expectedBuffer, suppliedBuffer);
-}
 
 export async function GET() {
   const setting = await prisma.siteSetting.findUnique({ where: { key: HERO_SETTING_KEY } });
@@ -19,7 +9,7 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: "Token pengaturan tidak valid." }, { status: 401 });
+  if (!isAdminMutationAuthorized(request)) return NextResponse.json({ error: "Sesi atau token admin tidak valid." }, { status: 401 });
   const body = await request.json().catch(() => null) as { videoUrl?: unknown; posterUrl?: unknown } | null;
   const videoUrl = typeof body?.videoUrl === "string" ? body.videoUrl.trim() : "";
   const posterUrl = typeof body?.posterUrl === "string" ? body.posterUrl.trim() : DEFAULT_HERO_MEDIA.posterUrl;

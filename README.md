@@ -29,6 +29,8 @@ npm run dev:admin
 
 Buka aplikasi publik di `http://localhost:3015` dan konsol admin di `http://localhost:3016`. Port admin otomatis mengarah ke `/pengaturan`, memakai shell operasional tersendiri, dan menolak halaman customer. Jalankan kedua perintah pada terminal terpisah.
 
+Setelah menjalankan `npm run db:seed`, login admin demo tersedia di `http://localhost:3016/admin/login` dengan email `demo.admin@hunibangun.id` dan password `DemoHuniBangun#2026`. Ubah `DEMO_ADMIN_EMAIL`, `DEMO_ADMIN_PASSWORD`, dan `ADMIN_SESSION_SECRET` untuk lingkungan selain demo. Password disimpan sebagai hash scrypt dan sesi admin menggunakan cookie `HttpOnly` selama delapan jam.
+
 Verifikasi produksi:
 
 ```bash

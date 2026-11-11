@@ -1,22 +1,12 @@
-import { timingSafeEqual } from "node:crypto";
 import { basename, extname } from "node:path";
 import { NextResponse } from "next/server";
+import { isAdminMutationAuthorized } from "@/lib/admin-auth";
 import { mediaAssetExists } from "@/lib/media-storage";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
 const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif", ".gif"]);
-
-function isAuthorized(request: Request) {
-  const expected = process.env.SETTINGS_ADMIN_TOKEN;
-  if (process.env.NODE_ENV !== "production" && !expected) return true;
-  if (!expected) return false;
-  const supplied = request.headers.get("x-settings-token") ?? "";
-  const expectedBuffer = Buffer.from(expected);
-  const suppliedBuffer = Buffer.from(supplied);
-  return expectedBuffer.length === suppliedBuffer.length && timingSafeEqual(expectedBuffer, suppliedBuffer);
-}
 
 function mediaFileName(value: unknown) {
   if (typeof value !== "string") return null;
@@ -40,7 +30,7 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  if (!isAuthorized(request)) return NextResponse.json({ error: "Token pengaturan tidak valid." }, { status: 401 });
+  if (!isAdminMutationAuthorized(request)) return NextResponse.json({ error: "Sesi atau token admin tidak valid." }, { status: 401 });
   const body = await request.json().catch(() => null) as { id?: unknown; mainImageUrl?: unknown } | null;
   if (typeof body?.id !== "string" || !body.id) return NextResponse.json({ error: "Desain tidak valid." }, { status: 400 });
   const fileName = mediaFileName(body.mainImageUrl);

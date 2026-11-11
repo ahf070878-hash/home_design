@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { BadgeDollarSign, House, Image, LayoutDashboard, LibraryBig, LockKeyhole, Settings, Users } from "lucide-react";
+import { BadgeDollarSign, House, Image, LayoutDashboard, LibraryBig, LockKeyhole, LogOut, Settings, Users } from "lucide-react";
 import styles from "./admin-console.module.css";
 
 type AdminSection = "dashboard" | "settings" | "media" | "products" | "finance" | "users";
@@ -30,7 +30,7 @@ export function AdminConsole({ children, activeSection = "settings" }: { childre
       <div className={styles.security}><LockKeyhole size={17}/><div><strong>Permukaan terpisah</strong><small>Admin · port 3016</small></div></div>
     </aside>
     <div className={styles.workspace}>
-      <header className={styles.topbar}><div><Settings size={17}/><span>{sectionLabels[activeSection]}</span></div><span className={styles.environment}><i/>Lingkungan lokal</span></header>
+      <header className={styles.topbar}><div><Settings size={17}/><span>{sectionLabels[activeSection]}</span></div><div className={styles.topbarActions}><span className={styles.environment}><i/>Admin aman</span><form action="/api/admin/auth/logout" method="post"><button type="submit"><LogOut size={15}/>Keluar</button></form></div></header>
       <main className={styles.content}>{children}</main>
     </div>
   </div>;
