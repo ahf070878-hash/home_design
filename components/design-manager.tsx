@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, Download, FileImage, LoaderCircle, Save } from "lucide-react";
 import styles from "./admin-console.module.css";
+import { HomeDesignModal } from "./home-design-modal";
 
 type AdminDesign = {
   id: string;
@@ -40,6 +41,7 @@ export function DesignManager() {
   const [packageAudience, setPackageAudience] = useState("ALL");
   const [packageFiles, setPackageFiles] = useState<File[]>([]);
   const [uploadingPackage, setUploadingPackage] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [message, setMessage] = useState("Memuat produk dan Pustaka Aset…");
   const packageInputRef = useRef<HTMLInputElement>(null);
 
@@ -153,9 +155,12 @@ export function DesignManager() {
         {importing ? <LoaderCircle className={styles.spin} size={17}/> : <Download size={17}/>}
         {importing ? "Mengimpor…" : `Impor ${externalImageCount} gambar customer`}
       </button>}
+      <button className={styles.primaryButton} type="button" onClick={() => setModalOpen(true)}><FileImage size={17}/>Tambah desain rumah</button>
     </div>
 
-    <form className={styles.packageUploader} onSubmit={uploadPackage}>
+    {modalOpen && <HomeDesignModal designs={designs} token={token} onClose={() => setModalOpen(false)} onUploaded={loadData} onMessage={setMessage}/>} 
+
+    {false && <form className={styles.packageUploader} onSubmit={uploadPackage}>
       <div className={styles.packageHeading}><div><h2>Upload paket produk &amp; desain</h2><p>Satu paket dapat berisi jumlah gambar dinamis (minimal 1). Gambar pertama menjadi cover katalog customer.</p></div><span>{packageFiles.length} gambar</span></div>
       <div className={styles.packageFields}>
         <label><span>Produk desain</span><select value={packageDesignId} onChange={(event) => setPackageDesignId(event.target.value)}>{designs.map((design) => <option value={design.id} key={design.id}>{design.code} · Type {design.type} · {design.name}</option>)}</select></label>
@@ -168,7 +173,7 @@ export function DesignManager() {
       <button className={styles.primaryButton} type="submit" disabled={uploadingPackage || !packageDesignId || !packageName.trim() || !packageCaption.trim() || packageFiles.length < 1 || packageFiles.length > 100}>
         {uploadingPackage ? <LoaderCircle className={styles.spin} size={17}/> : <FileImage size={17}/>}{uploadingPackage ? "Meng-upload paket…" : "Upload 1 paket"}
       </button>
-    </form>
+    </form>}
 
     {loading ? <div className={styles.mediaEmpty}><LoaderCircle className={styles.spin} size={24}/><p>Memuat desain…</p></div> : <>
       {media.length === 0 && <div className={styles.productNotice}><FileImage size={20}/><span>Upload produk dan desain dilakukan melalui paket di atas. Pustaka Aset hanya untuk review dan pengelolaan file.</span></div>}
