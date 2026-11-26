@@ -21,7 +21,8 @@ export async function POST(request: Request) {
   const response = NextResponse.json({ ok: true, displayName: admin.displayName, role: admin.role });
   response.cookies.set(ADMIN_SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    // Demo VPS can run behind plain HTTP; production defaults to Secure cookies.
+    secure: process.env.ADMIN_COOKIE_SECURE !== "false" && process.env.NODE_ENV === "production",
     sameSite: "strict",
     path: "/",
     maxAge: ADMIN_SESSION_MAX_AGE_SECONDS,
