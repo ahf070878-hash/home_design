@@ -10,6 +10,19 @@ export type AdminSession = {
   exp: number;
 };
 
+export type AdminRole = AdminSession["role"];
+
+export function canAccessAdminPath(role: AdminRole, path: string) {
+  if (role === "ADMIN") return true;
+  if (path.startsWith("/api/admin/auth/")) return true;
+  if (path.startsWith("/api/admin/designs")) path = "/products";
+  else if (path.startsWith("/api/admin/media")) path = "/media";
+  else if (path.startsWith("/api/admin/settings")) path = "/pengaturan";
+  if (role === "EDITOR") return path === "/admin" || path.startsWith("/products") || path.startsWith("/media") || path.startsWith("/pengaturan");
+  if (role === "FINANCE") return path === "/admin" || path.startsWith("/finance");
+  return false;
+}
+
 function sessionSecret() {
   return process.env.ADMIN_SESSION_SECRET?.trim() || (process.env.NODE_ENV !== "production" ? "hunibangun-local-demo-session-secret" : null);
 }

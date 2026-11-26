@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { ADMIN_SESSION_COOKIE, readAdminSessionToken } from "@/lib/admin-auth";
+import { ADMIN_SESSION_COOKIE, canAccessAdminPath, readAdminSessionToken } from "@/lib/admin-auth";
 
 export function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -16,6 +16,11 @@ export function proxy(request: NextRequest) {
       return path.startsWith("/api/")
         ? NextResponse.json({ error: "Sesi admin tidak valid atau sudah berakhir." }, { status: 401 })
         : NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+    if (!canAccessAdminPath(session.role, path)) {
+      return path.startsWith("/api/")
+        ? NextResponse.json({ error: "Role admin tidak memiliki akses ke menu ini." }, { status: 403 })
+        : NextResponse.redirect(new URL("/admin?forbidden=1", request.url));
     }
     return NextResponse.next();
   }
