@@ -137,34 +137,6 @@ export function MediaLibrary() {
   }
 
   return <div className={styles.mediaWorkspace}>
-    {false && <form className={styles.uploadPanel} onSubmit={uploadFile}>
-      <div className={styles.cardHeader}>
-        <h2>Upload aset umum</h2>
-        <p>Untuk hero, poster, atau konten umum. Paket gambar arsitektur diunggah dari Produk &amp; desain.</p>
-      </div>
-      <label className={styles.filePicker} htmlFor="media-file">
-        <Upload size={24}/>
-        <span>{file ? file.name : "Pilih gambar atau video"}</span>
-        <small>{file ? formatSize(file.size) : "JPG, PNG, WebP, AVIF, GIF, MP4, WebM, atau MOV"}</small>
-      </label>
-      <input ref={inputRef} className={styles.visuallyHiddenInput} id="media-file" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif,video/mp4,video/webm,video/quicktime" onChange={(event) => setFile(event.target.files?.[0] ?? null)}/>
-      <div className={styles.field}>
-        <label htmlFor="media-audience">Tampilkan ke customer</label>
-        <select id="media-audience" value={uploadAudience} onChange={(event) => setUploadAudience(event.target.value as MediaAsset["audience"])}><option value="ALL">Semua customer</option><option value="GUEST">Customer tanpa login</option><option value="AUTHENTICATED">Customer sudah login</option><option value="HIDDEN">Simpan, jangan tampilkan</option></select>
-        <small>Aturan ini bisa diubah lagi melalui tombol Edit pada setiap aset.</small>
-      </div>
-      <div className={styles.field}>
-        <label htmlFor="media-token">Token admin produksi</label>
-        <input id="media-token" type="password" value={token} onChange={(event) => setToken(event.target.value)} autoComplete="off" placeholder="Kosongkan untuk pengembangan lokal"/>
-        <small>Di produksi, isi sesuai <code>SETTINGS_ADMIN_TOKEN</code>.</small>
-      </div>
-      <button className={styles.primaryButton} type="submit" disabled={!file || uploading}>
-        {uploading ? <LoaderCircle className={styles.spin} size={17}/> : <Upload size={17}/>}
-        {uploading ? "Meng-upload…" : "Upload ke Pustaka Aset"}
-      </button>
-      <p className={styles.status} role="status">{message}</p>
-    </form>}
-
     <section className={styles.libraryPanel} aria-busy={loading}>
       <div className={styles.libraryHeader}>
         <div><h2>Aset tersedia</h2><p>{assets.length} file dalam penyimpanan lokal</p></div>
