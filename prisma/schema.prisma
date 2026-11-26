@@ -115,6 +115,7 @@ model Design {
   baseRab             Decimal       @map("base_rab") @db.Decimal(16, 2)
   mainImageUrl        String        @map("main_image_url")
   mediaPackageName    String?       @map("media_package_name")
+  mediaPackageCaption String?       @map("media_package_caption")
   galleryImageUrls    String[]      @default([]) @map("gallery_image_urls")
   facadeVariants      Json          @map("facade_variants") @db.JsonB
   layoutVariants      Json          @map("layout_variants") @db.JsonB

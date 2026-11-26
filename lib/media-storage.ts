@@ -6,7 +6,9 @@ const LOCAL_DIRECTORY = join(process.cwd(), "public", "uploads", "media");
 const LOCAL_METADATA_FILE = join(LOCAL_DIRECTORY, ".media-library.json");
 const GCS_PREFIX = "media/";
 
-type MediaMetadata = Record<string, { displayName: string }>;
+export const MEDIA_AUDIENCES = ["ALL", "GUEST", "AUTHENTICATED", "HIDDEN"] as const;
+export type MediaAudience = typeof MEDIA_AUDIENCES[number];
+type MediaMetadata = Record<string, { displayName: string; audience?: MediaAudience }>;
 
 export type MediaAsset = {
   fileName: string;
@@ -15,6 +17,7 @@ export type MediaAsset = {
   kind: "image" | "video";
   size: number;
   modifiedAt: string;
+  audience: MediaAudience;
 };
 
 function bucketName() {
@@ -67,6 +70,7 @@ export async function listMediaAssets(): Promise<MediaAsset[]> {
         kind: mediaKind(fileName),
         size: Number(metadata.size ?? 0),
         modifiedAt: metadata.updated || new Date(0).toISOString(),
+        audience: typeof metadata.metadata?.audience === "string" && MEDIA_AUDIENCES.includes(metadata.metadata.audience as MediaAudience) ? metadata.metadata.audience as MediaAudience : "ALL",
       } satisfies MediaAsset;
     }));
     return assets.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
@@ -84,18 +88,19 @@ export async function listMediaAssets(): Promise<MediaAsset[]> {
       kind: mediaKind(fileName),
       size: details.size,
       modifiedAt: details.mtime.toISOString(),
+      audience: metadata[fileName]?.audience && MEDIA_AUDIENCES.includes(metadata[fileName].audience) ? metadata[fileName].audience! : "ALL",
     } satisfies MediaAsset;
   }));
   return assets.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt));
 }
 
-export async function writeMediaAsset(fileName: string, content: Buffer, contentType: string, displayName: string) {
+export async function writeMediaAsset(fileName: string, content: Buffer, contentType: string, displayName: string, audience: MediaAudience = "ALL") {
   if (!isSafeMediaFileName(fileName)) throw new Error("INVALID_FILE_NAME");
   const bucket = storageBucket();
   if (bucket) {
     await bucket.file(`${GCS_PREFIX}${fileName}`).save(content, {
       resumable: false,
-      metadata: { contentType, cacheControl: "public, max-age=3600", metadata: { displayName } },
+      metadata: { contentType, cacheControl: "public, max-age=3600", metadata: { displayName, audience } },
       preconditionOpts: { ifGenerationMatch: 0 },
     });
     return mediaUrl(fileName);
@@ -104,7 +109,7 @@ export async function writeMediaAsset(fileName: string, content: Buffer, content
   await mkdir(LOCAL_DIRECTORY, { recursive: true });
   await writeFile(join(LOCAL_DIRECTORY, fileName), content, { flag: "wx" });
   const metadata = await readLocalMetadata();
-  metadata[fileName] = { displayName };
+  metadata[fileName] = { displayName, audience };
   await writeLocalMetadata(metadata);
   return mediaUrl(fileName);
 }
@@ -121,6 +126,21 @@ export async function updateMediaDisplayName(fileName: string, displayName: stri
   await stat(join(LOCAL_DIRECTORY, fileName));
   const metadata = await readLocalMetadata();
   metadata[fileName] = { displayName };
+  await writeLocalMetadata(metadata);
+}
+
+export async function updateMediaAudience(fileName: string, audience: MediaAudience) {
+  const bucket = storageBucket();
+  if (bucket) {
+    const file = bucket.file(`${GCS_PREFIX}${fileName}`);
+    const [exists] = await file.exists();
+    if (!exists) throw new Error("NOT_FOUND");
+    await file.setMetadata({ metadata: { audience } });
+    return;
+  }
+  await stat(join(LOCAL_DIRECTORY, fileName));
+  const metadata = await readLocalMetadata();
+  metadata[fileName] = { displayName: metadata[fileName]?.displayName ?? fileName, audience };
   await writeLocalMetadata(metadata);
 }
 

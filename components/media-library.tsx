@@ -12,6 +12,7 @@ type MediaAsset = {
   kind: "image" | "video";
   size: number;
   modifiedAt: string;
+  audience: "ALL" | "GUEST" | "AUTHENTICATED" | "HIDDEN";
 };
 
 function formatSize(bytes: number) {
@@ -22,6 +23,7 @@ function formatSize(bytes: number) {
 export function MediaLibrary() {
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [file, setFile] = useState<File | null>(null);
+  const [uploadAudience, setUploadAudience] = useState<MediaAsset["audience"]>("ALL");
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -29,6 +31,7 @@ export function MediaLibrary() {
   const [copiedUrl, setCopiedUrl] = useState("");
   const [editingFileName, setEditingFileName] = useState("");
   const [draftName, setDraftName] = useState("");
+  const [draftAudience, setDraftAudience] = useState<MediaAsset["audience"]>("ALL");
   const [savingFileName, setSavingFileName] = useState("");
   const [deletingFileName, setDeletingFileName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -51,6 +54,7 @@ export function MediaLibrary() {
     setMessage("Meng-upload media…");
     const body = new FormData();
     body.append("file", file);
+    body.append("audience", uploadAudience);
     const response = await fetch("/api/admin/media", {
       method: "POST",
       headers: token ? { "x-settings-token": token } : undefined,
@@ -79,12 +83,13 @@ export function MediaLibrary() {
   function startEditing(asset: MediaAsset) {
     setEditingFileName(asset.fileName);
     setDraftName(asset.displayName);
+    setDraftAudience(asset.audience);
     setMessage(`Mengedit nama “${asset.displayName}”.`);
   }
 
   function cancelEditing() {
     setEditingFileName("");
-    setDraftName("");
+    setDraftName(""); setDraftAudience("ALL");
     setMessage(`${assets.length} media tersedia.`);
   }
 
@@ -95,7 +100,7 @@ export function MediaLibrary() {
     const response = await fetch("/api/admin/media", {
       method: "PATCH",
       headers: { "content-type": "application/json", ...(token ? { "x-settings-token": token } : {}) },
-      body: JSON.stringify({ fileName: asset.fileName, displayName }),
+      body: JSON.stringify({ fileName: asset.fileName, displayName, audience: draftAudience }),
     });
     const payload = await response.json() as { asset?: MediaAsset; error?: string };
     if (!response.ok || !payload.asset) {
@@ -105,7 +110,7 @@ export function MediaLibrary() {
     }
     setAssets((current) => current.map((item) => item.fileName === asset.fileName ? payload.asset! : item));
     setEditingFileName("");
-    setDraftName("");
+    setDraftName(""); setDraftAudience("ALL");
     setSavingFileName("");
     setMessage("Nama media berhasil diperbarui tanpa mengubah URL file.");
   }
@@ -132,7 +137,7 @@ export function MediaLibrary() {
   }
 
   return <div className={styles.mediaWorkspace}>
-    <form className={styles.uploadPanel} onSubmit={uploadFile}>
+    {false && <form className={styles.uploadPanel} onSubmit={uploadFile}>
       <div className={styles.cardHeader}>
         <h2>Upload aset umum</h2>
         <p>Untuk hero, poster, atau konten umum. Paket gambar arsitektur diunggah dari Produk &amp; desain.</p>
@@ -144,6 +149,11 @@ export function MediaLibrary() {
       </label>
       <input ref={inputRef} className={styles.visuallyHiddenInput} id="media-file" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/gif,video/mp4,video/webm,video/quicktime" onChange={(event) => setFile(event.target.files?.[0] ?? null)}/>
       <div className={styles.field}>
+        <label htmlFor="media-audience">Tampilkan ke customer</label>
+        <select id="media-audience" value={uploadAudience} onChange={(event) => setUploadAudience(event.target.value as MediaAsset["audience"])}><option value="ALL">Semua customer</option><option value="GUEST">Customer tanpa login</option><option value="AUTHENTICATED">Customer sudah login</option><option value="HIDDEN">Simpan, jangan tampilkan</option></select>
+        <small>Aturan ini bisa diubah lagi melalui tombol Edit pada setiap aset.</small>
+      </div>
+      <div className={styles.field}>
         <label htmlFor="media-token">Token admin produksi</label>
         <input id="media-token" type="password" value={token} onChange={(event) => setToken(event.target.value)} autoComplete="off" placeholder="Kosongkan untuk pengembangan lokal"/>
         <small>Di produksi, isi sesuai <code>SETTINGS_ADMIN_TOKEN</code>.</small>
@@ -153,7 +163,7 @@ export function MediaLibrary() {
         {uploading ? "Meng-upload…" : "Upload ke Pustaka Aset"}
       </button>
       <p className={styles.status} role="status">{message}</p>
-    </form>
+    </form>}
 
     <section className={styles.libraryPanel} aria-busy={loading}>
       <div className={styles.libraryHeader}>
@@ -167,10 +177,10 @@ export function MediaLibrary() {
           </a>
           <div className={styles.mediaDetails}>
             <span>{asset.kind === "image" ? <FileImage size={15}/> : <Film size={15}/>} {asset.kind === "image" ? "Gambar" : "Video"} · {formatSize(asset.size)}</span>
-            {editingFileName === asset.fileName ? <input aria-label={`Nama tampilan ${asset.fileName}`} autoFocus maxLength={120} value={draftName} onChange={(event) => setDraftName(event.target.value)} onKeyDown={(event) => {
+            {editingFileName === asset.fileName ? <><input aria-label={`Nama tampilan ${asset.fileName}`} autoFocus maxLength={120} value={draftName} onChange={(event) => setDraftName(event.target.value)} onKeyDown={(event) => {
               if (event.key === "Enter") void saveEdit(asset);
               if (event.key === "Escape") cancelEditing();
-            }}/> : <strong title={asset.displayName}>{asset.displayName}</strong>}
+            }}/><select aria-label="Visibilitas customer" value={draftAudience} onChange={(event) => setDraftAudience(event.target.value as MediaAsset["audience"])}><option value="ALL">Semua customer</option><option value="GUEST">Customer tanpa login</option><option value="AUTHENTICATED">Customer sudah login</option><option value="HIDDEN">Sembunyikan dari customer</option></select></> : <><strong title={asset.displayName}>{asset.displayName}</strong><small>Visibilitas: {asset.audience === "ALL" ? "Semua customer" : asset.audience === "GUEST" ? "Tanpa login" : asset.audience === "AUTHENTICATED" ? "Sudah login" : "Tersembunyi"}</small></>}
             <code title={asset.url}>{asset.url}</code>
           </div>
           <div className={styles.mediaActions}>

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { extname } from "node:path";
 import { NextResponse } from "next/server";
 import { isAdminMutationAuthorized } from "@/lib/admin-auth";
-import { deleteMediaAsset, isSafeMediaFileName, listMediaAssets, mediaUrl, updateMediaDisplayName, writeMediaAsset } from "@/lib/media-storage";
+import { deleteMediaAsset, isSafeMediaFileName, listMediaAssets, mediaUrl, MEDIA_AUDIENCES, updateMediaAudience, updateMediaDisplayName, writeMediaAsset, type MediaAudience } from "@/lib/media-storage";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -27,6 +27,10 @@ function normalizeDisplayName(value: unknown) {
   return displayName;
 }
 
+function normalizeAudience(value: unknown): MediaAudience {
+  return typeof value === "string" && MEDIA_AUDIENCES.includes(value as MediaAudience) ? value as MediaAudience : "ALL";
+}
+
 export async function GET() {
   return NextResponse.json({ assets: await listMediaAssets() }, { headers: { "cache-control": "no-store" } });
 }
@@ -43,21 +47,24 @@ export async function POST(request: Request) {
   if (!mediaType) return NextResponse.json({ error: "Format file tidak didukung. Gunakan JPG, PNG, WebP, AVIF, GIF, MP4, WebM, atau MOV." }, { status: 415 });
 
   const fileName = `${Date.now()}-${randomUUID().slice(0, 8)}-${safeStem(file.name)}${mediaType.extension}`;
-  const url = await writeMediaAsset(fileName, Buffer.from(await file.arrayBuffer()), file.type, file.name);
-  return NextResponse.json({ asset: { fileName, displayName: file.name, url, kind: mediaType.kind, size: file.size, modifiedAt: new Date().toISOString() } }, { status: 201 });
+  const audience = normalizeAudience(formData?.get("audience"));
+  const url = await writeMediaAsset(fileName, Buffer.from(await file.arrayBuffer()), file.type, file.name, audience);
+  return NextResponse.json({ asset: { fileName, displayName: file.name, url, kind: mediaType.kind, size: file.size, modifiedAt: new Date().toISOString(), audience } }, { status: 201 });
 }
 
 export async function PATCH(request: Request) {
   if (!isAdminMutationAuthorized(request)) return NextResponse.json({ error: "Sesi atau token admin tidak valid." }, { status: 401 });
-  const body = await request.json().catch(() => null) as { fileName?: unknown; displayName?: unknown } | null;
+  const body = await request.json().catch(() => null) as { fileName?: unknown; displayName?: unknown; audience?: unknown } | null;
   if (!isSafeMediaFileName(body?.fileName)) return NextResponse.json({ error: "Nama file media tidak valid." }, { status: 400 });
   const displayName = normalizeDisplayName(body?.displayName);
   if (!displayName) return NextResponse.json({ error: `Nama media wajib diisi dan maksimal ${MAX_DISPLAY_NAME_LENGTH} karakter.` }, { status: 400 });
   try {
     const asset = (await listMediaAssets()).find((item) => item.fileName === body.fileName);
     if (!asset) throw new Error("NOT_FOUND");
+    const audience = body.audience === undefined ? asset.audience : normalizeAudience(body.audience);
     await updateMediaDisplayName(body.fileName, displayName);
-    return NextResponse.json({ asset: { ...asset, displayName } });
+    await updateMediaAudience(body.fileName, audience);
+    return NextResponse.json({ asset: { ...asset, displayName, audience } });
   } catch {
     return NextResponse.json({ error: "File media tidak ditemukan." }, { status: 404 });
   }

@@ -24,7 +24,7 @@ function mediaFileName(value: unknown) {
 export async function GET() {
   const designs = await prisma.design.findMany({
     orderBy: [{ type: "asc" }, { name: "asc" }],
-    select: { id: true, code: true, name: true, type: true, style: true, mainImageUrl: true, mediaPackageName: true, galleryImageUrls: true, isActive: true },
+    select: { id: true, code: true, name: true, type: true, style: true, mainImageUrl: true, mediaPackageName: true, mediaPackageCaption: true, galleryImageUrls: true, isActive: true },
   });
   return NextResponse.json({ designs }, { headers: { "cache-control": "no-store" } });
 }
@@ -41,7 +41,7 @@ export async function PATCH(request: Request) {
     const design = await prisma.design.update({
       where: { id: body.id },
       data: { mainImageUrl: body.mainImageUrl as string },
-      select: { id: true, code: true, name: true, type: true, style: true, mainImageUrl: true, mediaPackageName: true, galleryImageUrls: true, isActive: true },
+      select: { id: true, code: true, name: true, type: true, style: true, mainImageUrl: true, mediaPackageName: true, mediaPackageCaption: true, galleryImageUrls: true, isActive: true },
     });
     return NextResponse.json({ design });
   } catch {

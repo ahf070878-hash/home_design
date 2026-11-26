@@ -1,7 +1,7 @@
 export type Design = {
   id: string; name: string; type: number; style: string; width: number; length: number;
   floors: number; bedrooms: number; bathrooms: number; price: number; baseRab: number;
-  image: string; mediaPackageName?: string | null; galleryImages?: string[];
+  image: string; mediaPackageName?: string | null; mediaPackageCaption?: string | null; galleryImages?: string[];
   facadeVariants: string[]; layoutVariants: string[];
 };
 

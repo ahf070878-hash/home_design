@@ -14,6 +14,7 @@ type AdminDesign = {
   style: string;
   mainImageUrl: string;
   mediaPackageName: string | null;
+  mediaPackageCaption: string | null;
   galleryImageUrls: string[];
   isActive: boolean;
 };
@@ -35,6 +36,8 @@ export function DesignManager() {
   const [importing, setImporting] = useState(false);
   const [packageDesignId, setPackageDesignId] = useState("");
   const [packageName, setPackageName] = useState("");
+  const [packageCaption, setPackageCaption] = useState("");
+  const [packageAudience, setPackageAudience] = useState("ALL");
   const [packageFiles, setPackageFiles] = useState<File[]>([]);
   const [uploadingPackage, setUploadingPackage] = useState(false);
   const [message, setMessage] = useState("Memuat produk dan Pustaka Aset…");
@@ -110,12 +113,14 @@ export function DesignManager() {
 
   async function uploadPackage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (packageFiles.length < 1 || packageFiles.length > 20) { setMessage("Pilih 1 sampai 20 gambar untuk satu paket arsitektur."); return; }
+    if (packageFiles.length < 1 || packageFiles.length > 100) { setMessage("Pilih minimal 1 gambar; jumlah paket maksimal 100 gambar."); return; }
     setUploadingPackage(true);
     setMessage("Meng-upload paket arsitektur…");
     const body = new FormData();
     body.append("designId", packageDesignId);
     body.append("packageName", packageName);
+    body.append("caption", packageCaption);
+    body.append("audience", packageAudience);
     packageFiles.forEach((file) => body.append("files", file));
     const response = await fetch("/api/admin/designs/package", {
       method: "POST",
@@ -130,6 +135,7 @@ export function DesignManager() {
     }
     await loadData();
     setPackageName("");
+    setPackageCaption("");
     setPackageFiles([]);
     if (packageInputRef.current) packageInputRef.current.value = "";
     setUploadingPackage(false);
@@ -150,20 +156,22 @@ export function DesignManager() {
     </div>
 
     <form className={styles.packageUploader} onSubmit={uploadPackage}>
-      <div className={styles.packageHeading}><div><h2>Upload paket arsitektur</h2><p>Satu paket dapat berisi 1–20 gambar. Gambar pertama menjadi cover katalog customer.</p></div><span>{packageFiles.length} gambar</span></div>
+      <div className={styles.packageHeading}><div><h2>Upload paket produk &amp; desain</h2><p>Satu paket dapat berisi jumlah gambar dinamis (minimal 1). Gambar pertama menjadi cover katalog customer.</p></div><span>{packageFiles.length} gambar</span></div>
       <div className={styles.packageFields}>
         <label><span>Produk desain</span><select value={packageDesignId} onChange={(event) => setPackageDesignId(event.target.value)}>{designs.map((design) => <option value={design.id} key={design.id}>{design.code} · Type {design.type} · {design.name}</option>)}</select></label>
         <label><span>Nama paket</span><input value={packageName} maxLength={80} onChange={(event) => setPackageName(event.target.value)} placeholder="Contoh: Paket Arsitektur Nara 2027"/></label>
-        <label className={styles.packageFileField}><span>Pilih gambar sekaligus</span><input ref={packageInputRef} type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" onChange={(event) => { const files = Array.from(event.target.files ?? []); setPackageFiles(files); if (files.length > 20) setMessage("Maksimal 20 gambar dalam satu paket."); }}/></label>
+        <label><span>Caption desain</span><textarea value={packageCaption} maxLength={240} onChange={(event) => setPackageCaption(event.target.value)} placeholder="Deskripsi singkat yang tampil di katalog customer" rows={2}/></label>
+        <label><span>Visibilitas customer</span><select value={packageAudience} onChange={(event) => setPackageAudience(event.target.value)}><option value="ALL">Semua customer</option><option value="GUEST">Customer tanpa login</option><option value="AUTHENTICATED">Customer sudah login</option><option value="HIDDEN">Simpan, jangan tampilkan</option></select></label>
+      <label className={styles.packageFileField}><span>Pilih gambar sekaligus</span><input ref={packageInputRef} type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" onChange={(event) => { const files = Array.from(event.target.files ?? []); setPackageFiles(files); if (files.length > 100) setMessage("Maksimal 100 gambar dalam satu paket."); }}/></label>
       </div>
       {packageFiles.length > 0 && <ol className={styles.packageFileList}>{packageFiles.map((file, index) => <li key={`${file.name}-${index}`}><span>{index + 1}</span>{file.name}{index === 0 && <strong>Cover</strong>}</li>)}</ol>}
-      <button className={styles.primaryButton} type="submit" disabled={uploadingPackage || !packageDesignId || !packageName.trim() || packageFiles.length < 1 || packageFiles.length > 20}>
+      <button className={styles.primaryButton} type="submit" disabled={uploadingPackage || !packageDesignId || !packageName.trim() || !packageCaption.trim() || packageFiles.length < 1 || packageFiles.length > 100}>
         {uploadingPackage ? <LoaderCircle className={styles.spin} size={17}/> : <FileImage size={17}/>}{uploadingPackage ? "Meng-upload paket…" : "Upload 1 paket"}
       </button>
     </form>
 
     {loading ? <div className={styles.mediaEmpty}><LoaderCircle className={styles.spin} size={24}/><p>Memuat desain…</p></div> : <>
-      {media.length === 0 && <div className={styles.productNotice}><FileImage size={20}/><span>Gambar aktif customer tetap ditampilkan di bawah. Impor gambar tersebut atau <Link href="/media">upload aset umum</Link> ke Pustaka Aset.</span></div>}
+      {media.length === 0 && <div className={styles.productNotice}><FileImage size={20}/><span>Upload produk dan desain dilakukan melalui paket di atas. Pustaka Aset hanya untuk review dan pengelolaan file.</span></div>}
       <div className={styles.productList}>
       {designs.map((design) => {
         const selectedUrl = selected[design.id] ?? design.mainImageUrl;

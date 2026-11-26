@@ -43,7 +43,7 @@ function renderStep(step:number,ctx:Ctx){
 
 function DesignPackageGallery({design}:{design:Design}) {
   if (!design.galleryImages?.length) return null;
-  return <section className="panel"><h2>{design.mediaPackageName ?? "Paket gambar arsitektur"}</h2><p>{design.galleryImages.length} gambar dalam satu paket desain.</p><div className="architecture-gallery">{design.galleryImages.map((image,index)=><figure key={image}><div><Image src={image} alt={`${design.name} · gambar ${index+1}`} fill sizes="(max-width:768px) 50vw, 25vw"/></div><figcaption>{index===0?"Cover katalog":`Gambar ${index+1}`}</figcaption></figure>)}</div></section>;
+  return <section className="panel"><h2>{design.mediaPackageName ?? "Paket gambar arsitektur"}</h2>{design.mediaPackageCaption && <p>{design.mediaPackageCaption}</p>}<p>{design.galleryImages.length} gambar dalam satu paket desain.</p><div className="architecture-gallery">{design.galleryImages.map((image,index)=><figure key={image}><div><Image src={image} alt={`${design.name} · gambar ${index+1}`} fill sizes="(max-width:768px) 50vw, 25vw"/></div><figcaption>{index===0?"Cover katalog":`Gambar ${index+1}`}</figcaption></figure>)}</div></section>;
 }
 
 function MaterialStep({ctx}:{ctx:Ctx}){

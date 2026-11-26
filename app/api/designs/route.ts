@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { isAuthenticatedCustomer, audienceAllows } from "@/lib/customer-audience";
+import { listMediaAssets } from "@/lib/media-storage";
 
 export async function GET(request: NextRequest) {
   const width = Number(request.nextUrl.searchParams.get("width"));
   const length = Number(request.nextUrl.searchParams.get("length"));
   const hasLand = Number.isFinite(width) && width > 0 && Number.isFinite(length) && length > 0;
   const designs = await prisma.design.findMany({ where: { isActive: true }, orderBy: [{ type: "asc" }, { name: "asc" }] });
+  const authenticated = isAuthenticatedCustomer(request);
+  const assets = await listMediaAssets();
+  const visibilityByUrl = new Map(assets.map((asset) => [asset.url, audienceAllows(asset.audience, authenticated)]));
+  const canShow = (url: string) => !url.startsWith("/api/media/") || visibilityByUrl.get(url) !== false;
 
   return NextResponse.json({
     designs: designs.map((design) => {
@@ -23,9 +29,10 @@ export async function GET(request: NextRequest) {
         bathrooms: design.bathrooms,
         price: Number(design.blueprintPrice),
         baseRab: Number(design.baseRab),
-        image: design.mainImageUrl,
+        image: canShow(design.mainImageUrl) ? design.mainImageUrl : "/assets/hidden-media.svg",
         mediaPackageName: design.mediaPackageName,
-        galleryImages: design.galleryImageUrls,
+        mediaPackageCaption: design.mediaPackageCaption,
+        galleryImages: design.galleryImageUrls.filter(canShow),
         facadeVariants: Array.isArray(design.facadeVariants) ? design.facadeVariants : [],
         layoutVariants: Array.isArray(design.layoutVariants) ? design.layoutVariants : [],
         fitsLand: hasLand ? widthShortfall === 0 && lengthShortfall === 0 : null,

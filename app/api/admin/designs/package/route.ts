@@ -2,13 +2,13 @@ import { randomUUID } from "node:crypto";
 import { extname } from "node:path";
 import { NextResponse } from "next/server";
 import { isAdminMutationAuthorized } from "@/lib/admin-auth";
-import { deleteMediaAsset, writeMediaAsset } from "@/lib/media-storage";
+import { deleteMediaAsset, MEDIA_AUDIENCES, writeMediaAsset, type MediaAudience } from "@/lib/media-storage";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
 const MIN_PACKAGE_SIZE = 1;
-const MAX_PACKAGE_SIZE = 20;
+const MAX_PACKAGE_SIZE = 100;
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 const ALLOWED_TYPES = new Map([
   ["image/jpeg", ".jpg"],
@@ -26,11 +26,16 @@ export async function POST(request: Request) {
   const formData = await request.formData().catch(() => null);
   const designId = formData?.get("designId");
   const packageNameValue = formData?.get("packageName");
+  const captionValue = formData?.get("caption");
   const files = formData?.getAll("files").filter((value): value is File => value instanceof File) ?? [];
   const packageName = typeof packageNameValue === "string" ? packageNameValue.trim() : "";
+  const caption = typeof captionValue === "string" ? captionValue.trim() : "";
+  const audienceValue = formData?.get("audience");
+  const audience: MediaAudience = typeof audienceValue === "string" && MEDIA_AUDIENCES.includes(audienceValue as MediaAudience) ? audienceValue as MediaAudience : "ALL";
 
   if (typeof designId !== "string" || !designId) return NextResponse.json({ error: "Pilih desain untuk paket gambar." }, { status: 400 });
   if (!packageName || packageName.length > 80) return NextResponse.json({ error: "Nama paket wajib diisi dan maksimal 80 karakter." }, { status: 400 });
+  if (!caption || caption.length > 240) return NextResponse.json({ error: "Caption desain wajib diisi dan maksimal 240 karakter." }, { status: 400 });
   if (files.length < MIN_PACKAGE_SIZE || files.length > MAX_PACKAGE_SIZE) return NextResponse.json({ error: `Pilih 1 sampai ${MAX_PACKAGE_SIZE} gambar dalam satu paket.` }, { status: 400 });
   for (const file of files) {
     if (!file.size || file.size > MAX_FILE_SIZE) return NextResponse.json({ error: "Setiap gambar wajib berisi dan maksimal 15 MB." }, { status: 413 });
@@ -47,15 +52,15 @@ export async function POST(request: Request) {
     for (const [index, file] of files.entries()) {
       const extension = ALLOWED_TYPES.get(file.type) ?? extname(file.name).toLowerCase();
       const fileName = `${Date.now()}-${randomUUID().slice(0, 8)}-${safeStem(design.code)}-${safeStem(packageName)}-${index + 1}${extension}`;
-      const url = await writeMediaAsset(fileName, Buffer.from(await file.arrayBuffer()), file.type, `${packageName} · ${index + 1}/${files.length}`);
+      const url = await writeMediaAsset(fileName, Buffer.from(await file.arrayBuffer()), file.type, `${packageName} · ${index + 1}/${files.length}`, audience);
       writtenFiles.push(fileName);
       galleryImageUrls.push(url);
     }
 
     const updated = await prisma.design.update({
       where: { id: design.id },
-      data: { mediaPackageName: packageName, galleryImageUrls, mainImageUrl: galleryImageUrls[0] },
-      select: { id: true, code: true, name: true, type: true, style: true, mainImageUrl: true, mediaPackageName: true, galleryImageUrls: true, isActive: true },
+      data: { mediaPackageName: packageName, mediaPackageCaption: caption, galleryImageUrls, mainImageUrl: galleryImageUrls[0] },
+      select: { id: true, code: true, name: true, type: true, style: true, mainImageUrl: true, mediaPackageName: true, mediaPackageCaption: true, galleryImageUrls: true, isActive: true },
     });
     return NextResponse.json({ design: updated, uploadedImages: galleryImageUrls.length }, { status: 201 });
   } catch (error) {
