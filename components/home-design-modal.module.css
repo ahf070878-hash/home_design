@@ -17,6 +17,7 @@
 .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .field { display: grid; gap: 6px; }
 .field label, .field > span { color: #385249; font-size: 12px; font-weight: 700; }
+.helper { color: #74847b; font-size: 12px; line-height: 1.45; }
 .field input, .field select, .field textarea { width: 100%; box-sizing: border-box; min-height: 44px; border: 1px solid #ccd9d1; border-radius: 9px; padding: 10px 11px; background: #fff; color: #1d3329; font: inherit; font-size: 14px; }
 .field textarea { min-height: 82px; resize: vertical; }
 .field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible, .iconButton:focus-visible, .button:focus-visible { outline: 3px solid #8bc7a0; outline-offset: 2px; }

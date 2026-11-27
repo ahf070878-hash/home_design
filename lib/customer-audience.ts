@@ -6,7 +6,9 @@ export function isAuthenticatedCustomer(request: NextRequest) {
 }
 
 export function audienceAllows(audience: MediaAudience, authenticated: boolean) {
-  if (audience === "HIDDEN") return false;
+  // Paid assets are intentionally not exposed by the public catalog/media URL.
+  // The paid package/download flow must grant access explicitly after payment.
+  if (audience === "HIDDEN" || audience === "PAID") return false;
   if (audience === "ALL") return true;
   return authenticated ? audience === "AUTHENTICATED" : audience === "GUEST";
 }

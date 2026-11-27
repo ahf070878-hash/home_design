@@ -6,7 +6,8 @@ const LOCAL_DIRECTORY = join(process.cwd(), "public", "uploads", "media");
 const LOCAL_METADATA_FILE = join(LOCAL_DIRECTORY, ".media-library.json");
 const GCS_PREFIX = "media/";
 
-export const MEDIA_AUDIENCES = ["ALL", "GUEST", "AUTHENTICATED", "HIDDEN"] as const;
+/** Visibility tiers used by both the admin upload form and customer catalog. */
+export const MEDIA_AUDIENCES = ["ALL", "GUEST", "AUTHENTICATED", "PAID", "HIDDEN"] as const;
 export type MediaAudience = typeof MEDIA_AUDIENCES[number];
 type MediaMetadata = Record<string, { displayName: string; audience?: MediaAudience }>;
 
