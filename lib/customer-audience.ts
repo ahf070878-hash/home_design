@@ -1,8 +1,8 @@
-import type { NextRequest } from "next/server";
 import type { MediaAudience } from "./media-storage";
 
-export function isAuthenticatedCustomer(request: NextRequest) {
-  return Boolean(request.cookies.get("hunibangun_customer_session")?.value);
+export function isAuthenticatedCustomer(request: Request) {
+  const cookie = request.headers.get("cookie")?.split(";").map((item) => item.trim()).find((item) => item.startsWith("hunibangun_customer_session="));
+  return Boolean(cookie && cookie.slice("hunibangun_customer_session=".length));
 }
 
 export function audienceAllows(audience: MediaAudience, authenticated: boolean) {
